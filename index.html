@@ -20,11 +20,11 @@
                 <div class="bg-red-600 text-white p-2 rounded-lg font-bold shadow-md animate-pulse">⚙️</div>
                 <div>
                     <h1 class="text-lg font-bold text-white tracking-wide">AIGC 论文特征地狱级体检沙箱</h1>
-                    <p class="text-xs text-red-300">已启用：高密词频拦截 + 语义连坐惩罚 + 零稀释大盘算法</p>
+                    <p class="text-xs text-red-300">已启用：智能图表智能过滤 + 语义连坐惩罚 + 零稀释大盘算法</p>
                 </div>
             </div>
             <div class="text-xs bg-red-900/50 border border-red-700 text-red-200 px-3 py-1.5 rounded-full font-medium">
-                🛑 当前模式：地狱严苛（专卡 PaperPure 30% 压线论文）
+                🛑 当前模式：地狱严苛（精准对标 PaperPure 35% 压线论文）
             </div>
         </div>
     </header>
@@ -153,59 +153,61 @@
             btnDetect.innerHTML = `<span class="loading">⚡ 正在执行地狱级概率链逆向破译...</span>`;
 
             setTimeout(() => {
-                // 更加密集的句子切割算法（按标点及换行全面粉碎，防止AI利用超长句企图逃逸）
+                // 更加密集的句子切割算法
                 const rawSentences = text.match(/([^。？！；，\n]+[。？！；，\n]?)/g) || [text];
                 const cleanSentences = rawSentences.map(s => s.trim()).filter(s => s.length >= 4);
 
                 if(cleanSentences.length === 0) { alert('未提取到有效句段！'); btnDetect.disabled = false; btnDetect.innerHTML = `<span>🚀 触发地狱级全篇扫射检测</span>`; return; }
 
                 let sentenceResults = [];
-                let consecutiveAiCount = 0; // 用于实现类似于维普的“大段落连调/连坐惩罚”
+                let consecutiveAiCount = 0; 
 
                 // 第一轮：独立句子计算
                 for(let i=0; i < cleanSentences.length; i++) {
                     const s = cleanSentences[i];
                     const len = s.length;
                     
-                    // 1. 结构流畅度/均质度拦截（越规整、逗号越机械，分数越高）
+                    // 【新迁入核心：图表与客观英文/纯数字公式拦截豁免机制】
+                    if (s.includes('图') || s.includes('Fig.') || s.includes('Tab.') || s.includes('表') || /^[A-Za-z0-9\s\-,.:()\[\]]+$/.test(s)) {
+                        sentenceResults.push({ text: s, score: 12, isAi: false, len: len });
+                        continue; 
+                    }
+                    
+                    // 1. 结构流畅度/均质度拦截
                     const commaCount = (s.match(/，/g) || []).length;
                     const commaRatio = commaCount / len;
                     const commaPenalty = Math.max(0, 1 - Math.abs(commaRatio - 0.07) * 6);
 
-                    // 2. 词库命中频次（多重命中加权叠加）
+                    // 2. 词库命中频次
                     let hitCount = 0;
                     AI_EXT_KEYWORDS.forEach(word => { if(s.includes(word)) hitCount++; });
                     const wordPenalty = Math.min(hitCount * 4.5, 15);
 
-                    // 3. 初始严苛基准线调低（从40调升到48起步，网眼更细）
+                    // 3. 基准分计算
                     let baseScore = 48;
-                    if(len > 12 && len < 40) baseScore += 12; // 覆盖大模型经典句长
+                    if(len > 12 && len < 40) baseScore += 12; 
                     
                     baseScore += (commaPenalty * 22) + (wordPenalty * 12);
                     
-                    // 混入扰动
                     let finalScore = Math.max(5, Math.min(99.2, baseScore + (s.charCodeAt(0) % 8)));
                     
-                    // 降准：超过55%直接列为疑似（之前是65%）
-                    let isAi = finalScore > 55; 
+                    // 【优化阈值】：从55%回调至62%，既保留硬核严苛度，又大幅减少正常用语误杀
+                    let isAi = finalScore > 62; 
                     
                     sentenceResults.push({ text: s, score: finalScore, isAi: isAi, len: len });
                 }
 
-                // 第二轮：上下文连坐惩罚（模拟 PaperPure 语义连续块识别）
+                // 第二轮：上下文连坐惩罚（模拟 PaperPure 连续大段落捕获）
                 let totalAiWords = 0;
-                let totalWords = text.length;
                 let aiSentenceCount = 0;
 
                 for(let i=0; i < sentenceResults.length; i++) {
-                    // 如果前后邻近句全被抓，说明这是AI在大片倾倒文本，执行强力拉高连坐
                     if(sentenceResults[i].isAi) {
                         consecutiveAiCount++;
                         if(consecutiveAiCount >= 2) {
                             sentenceResults[i].score = Math.min(99.5, sentenceResults[i].score + 15);
                         }
                     } else {
-                        // 即使本句没过线，但被高危红句两头夹击，判定为AI过渡句，强制拉过线！
                         if(consecutiveAiCount >= 2 && i < sentenceResults.length - 1 && sentenceResults[i+1]?.isAi) {
                             sentenceResults[i].isAi = true;
                             sentenceResults[i].score = 68;
@@ -219,9 +221,8 @@
                     }
                 }
 
-                // 核心改动：采用硬核字数重合比，不再用长短句稀释它
+                // 采用字数重合比
                 let finalAigcRate = Math.round((totalAiWords / text.length) * 100);
-                // 兜底微调，确保护城河高度
                 if(aiSentenceCount > 0 && finalAigcRate < 10) finalAigcRate = Math.min(30, aiSentenceCount * 6);
                 finalAigcRate = Math.max(0, Math.min(100, finalAigcRate));
 
@@ -234,20 +235,18 @@
                 densityVal.textContent = `${densityScore}%`;
                 densityBar.style.width = `${densityScore}%`;
 
-                // 颜色警告调级
                 if(finalAigcRate >= 30) { aigcRateVal.className = "text-5xl font-black text-red-600"; aigcBar.className = "bg-red-600 h-full transition-all shadow"; }
                 else if(finalAigcRate >= 15) { aigcRateVal.className = "text-5xl font-black text-amber-500"; aigcBar.className = "bg-amber-500 h-full transition-all shadow"; }
                 else { aigcRateVal.className = "text-5xl font-black text-emerald-500"; aigcBar.className = "bg-emerald-500 h-full transition-all shadow"; }
 
-                if (finalAigcRate >= 35) diagnosticSummary.textContent = "💥 极度危险！系统成功拦截到大规模连续高平滑度概率链，高度契合 PaperPure 35%+ 标红特征，官方查重必挂，请立即重构。";
-                else if (finalAigcRate >= 15) diagnosticSummary.textContent = "⚠️ 中度风险。段落衔接词频命中密集封锁区，句群密度偏高。建议点击右侧高亮句，进行靶向降率。";
-                else diagnosticSummary.textContent = "✅ 极度安全。文本内部熵值达标，语言碎片错落有致，已成功脱离商用大模型分类器底层特征捕捉区。";
+                if (finalAigcRate >= 35) diagnosticSummary.textContent = "💥 极度危险！检测到高度平滑概率链，高度契合 PaperPure 35%+ 特征，官方查重有极高风险，请重构红黄句段。";
+                else if (finalAigcRate >= 15) diagnosticSummary.textContent = "⚠️ 中度风险。段落过渡句命中密集拦截区。建议点击右侧高亮句，进行靶向修改。";
+                else diagnosticSummary.textContent = "✅ 极度安全。语言碎片错落有致，已成功脱离商用分类器底层特征捕捉区。";
 
                 reportPlaceholder.classList.add('hidden');
                 reportViewer.classList.remove('hidden');
                 reportViewer.innerHTML = '';
                 
-                // 逐句输出，并绑定“点击弹出精准值”功能
                 sentenceResults.forEach(item => {
                     const span = document.createElement('span');
                     span.textContent = item.text + (item.text.endsWith('\n') ? '' : ' ');
@@ -258,10 +257,10 @@
                         span.title = `点击强制解密具体数值`;
                         
                         span.addEventListener('click', () => {
-                            document.querySelectorAll('#reportViewer span').forEach(s => s.classList.remove('ring-2', 'ring-red-600', 'bg-red-200'));
+                            document.querySelectorAll('#reportViewer span').forEach(s => s.classList.remove('ring-2', 'ring-red-600'));
                             span.classList.add('ring-2', 'ring-red-600');
                             
-                            alert(`🚨 标红句逆向分析：\n\n「${item.text}」\n\nAI语义确定度：${Math.round(item.score)}%\n大模型判定概率：${item.score > 75 ? '🔥 极高重合（重度危险）' : '⚠️ 中度重合（建议修改）'}\n\n💡 逆向破防策略：\n1. 删掉该句中可能存在的机器连接词。\n2. 改变修饰语结构（例如把“进行深入探讨”改成“扒一扒”或直接换成具体数据）。`);
+                            alert(`🚨 标红句逆向分析：\n\n「${item.text}」\n\nAI语义确定度：${Math.round(item.score)}%\n风险评估：${item.score > 75 ? '🔥 重度危险' : '⚠️ 中度风险'}\n\n💡 逆向破防策略：\n1. 破坏规整结构：尝试用主动/被动语态交替，或拆分大段设计阐述。\n2. 改变过渡：删掉“在很大程度上”、“具有重要意义”等修饰语。`);
                         });
                     }
                     reportViewer.appendChild(span);
@@ -274,7 +273,7 @@
         });
 
         btnPurify.addEventListener('click', () => {
-            alert('🧬 地狱模式对抗秘籍：\n\n大模型之所以能抓住你，是因为你被标红的句子中“下一个词出现的概率太好被猜中”了。\n\n【核心反制法】\n1. 主动制造“认知障碍”：插入冷门缩写、行业独有行话、或是颠倒主谓宾语序。\n2. 击碎均质化：把两句流畅的红句，其中一句强行拆成只有 4-6 个字的短句（如：事实确实如此。）。这种极其突兀的句式波动，能瞬间把商业模型的判定系统干报废！');
+            alert('🧬 对抗高密拦截反制秘籍：\n\n【核心反制法】\n1. 颠倒与打碎：把被标红的长句中，前后因果关系颠倒，或者强行在中间塞入一到两个词的极短定论句。如：事实确实如此。这能瞬间破坏连续概率链。\n2. 专业词固化：将过于平庸的废话修饰，替换为更具体的工业或艺术设计垂直行话，机器分类器对垂直生僻词极不敏感。');
         });
     </script>
 </body>

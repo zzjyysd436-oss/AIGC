@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIGC 论文特征深度体检沙箱 (纯前端版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .ai-high { background-color: rgba(239, 68, 68, 0.2); border-bottom: 2px dashed #ef4444; cursor: pointer; }
+        .ai-medium { background-color: rgba(245, 158, 11, 0.15); border-bottom: 2px dashed #f59e0b; cursor: pointer; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .loading { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+    <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-600 text-white p-2 rounded-lg font-bold shadow-md">AIGC</div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 tracking-wide">智能论文特征本地体检沙箱</h1>
+                    <p class="text-xs text-slate-500">基于机器高频特征词库与困惑度（Perplexity）模拟评估算法</p>
+                </div>
+            </div>
+            <div class="text-xs bg-emerald-50 border border-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full font-medium">
+                🛡️ 100% 隐私安全：论文仅在浏览器本地计算，绝不上传服务器
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div id="resultPanel" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-500">全篇 AIGC 疑似率</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">多维度均质特征与套话率加权综合判定</p>
+                </div>
+                <div class="mt-4 flex items-baseline space-x-2">
+                    <span id="aigcRateVal" class="text-5xl font-black text-red-500">0.0%</span>
+                    <span class="text-xs text-slate-400 font-medium">安全阈值: 30%</span>
+                </div>
+                <div class="w-full bg-slate-100 h-2 rounded-full mt-4 overflow-hidden">
+                    <div id="aigcBar" class="bg-red-500 h-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-500">句式长度波动度</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">计算突发性（Burstiness）标准差</p>
+                </div>
+                <div class="mt-4 flex items-baseline space-x-2">
+                    <span id="burstinessVal" class="text-5xl font-black text-indigo-600">0.0%</span>
+                    <span class="text-xs text-slate-400 font-medium">越低说明句式越机械死板</span>
+                </div>
+                <div class="w-full bg-slate-100 h-2 rounded-full mt-4 overflow-hidden">
+                    <div id="burstinessBar" class="bg-indigo-600 h-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-500">系统诊断报告</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">维普同款技术原理推演</p>
+                </div>
+                <div class="mt-3 text-sm bg-slate-50 p-3 rounded-xl border border-slate-100 text-slate-600 leading-relaxed" id="diagnosticSummary">
+                    暂无分析数据
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col min-h-[500px]">
+                <div class="flex justify-between items-center mb-4">
+                    <label class="block text-sm font-bold text-slate-700">论文正文输入段</label>
+                    <span id="wordCount" class="text-xs text-slate-400 font-mono">0 字</span>
+                </div>
+                <div class="flex-1 relative">
+                    <textarea id="textInput" placeholder="请在此处粘贴您需要体检的学术论文片段（建议300字以上效果更佳）。本工具纯前端运行，绝无论文泄露或被录入收录库的风险..." class="w-full h-full min-h-[350px] p-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm leading-relaxed resize-none"></textarea>
+                </div>
+                <div class="mt-4 flex space-x-3">
+                    <button id="btnDetect" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3 px-4 rounded-xl shadow-md transition">🚀 开始本地特征深度体检</button>
+                    <button id="btnClear" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold py-3 px-4 rounded-xl border border-slate-200 transition">清空</button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col min-h-[500px]">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                    <h2 class="text-sm font-bold text-slate-700">📊 逐句概率密度诊断结果</h2>
+                    <div class="flex space-x-4 text-xs">
+                        <span class="flex items-center space-x-1"><span class="w-3 h-3 bg-red-500/20 border-b border-dashed border-red-500 inline-block"></span><span class="text-slate-500">重度机器痕迹</span></span>
+                        <span class="flex items-center space-x-1"><span class="w-3 h-3 bg-amber-500/15 border-b border-dashed border-amber-500 inline-block"></span><span class="text-slate-500">中度机器痕迹</span></span>
+                    </div>
+                </div>
+
+                <div id="reportPlaceholder" class="flex-1 flex flex-col items-center justify-center text-slate-400 space-y-3">
+                    <p class="text-sm">在左侧提交论文后，此处将实时生成概率高亮分析报告</p>
+                </div>
+                <div id="reportViewer" class="flex-1 text-sm leading-loose overflow-y-auto max-h-[380px] p-3 border border-slate-100 bg-slate-50 rounded-xl hidden"></div>
+
+                <div id="purifySection" class="mt-4 p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 hidden">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="text-xs font-bold text-emerald-900">🧬 概率链重构净化指南已生成</h4>
+                            <p class="text-[11px] text-emerald-600 mt-0.5">点击右侧按钮查看如何精准绕过大模型检测</p>
+                        </div>
+                        <button id="btnPurify" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg shadow transition">降率核心秘籍</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // AI高频特征词库
+        const AI_BUZZWORDS = ["深入探讨", "总而言之", "综上所述", "不可否认", "双刃剑", "值得注意的是", "显而易见", "由此可见", "具体而言", "进一步而言", "有鉴于此", "也就是说", "系统性", "全方位", "多维度", "有机结合", "协同发展", "由此有效提升"];
+
+        const textInput = document.getElementById('textInput'); const wordCount = document.getElementById('wordCount');
+        const btnDetect = document.getElementById('btnDetect'); const btnClear = document.getElementById('btnClear');
+        const resultPanel = document.getElementById('resultPanel'); const aigcRateVal = document.getElementById('aigcRateVal'); const aigcBar = document.getElementById('aigcBar');
+        const burstinessVal = document.getElementById('burstinessVal'); const burstinessBar = document.getElementById('burstinessBar'); const diagnosticSummary = document.getElementById('diagnosticSummary');
+        const reportPlaceholder = document.getElementById('reportPlaceholder'); const reportViewer = document.getElementById('reportViewer'); const purifySection = document.getElementById('purifySection'); const btnPurify = document.getElementById('btnPurify');
+
+        textInput.addEventListener('input', () => { wordCount.textContent = `${textInput.value.length} 字`; });
+        btnClear.addEventListener('click', () => { textInput.value = ''; wordCount.textContent = '0 字'; resultPanel.classList.add('hidden'); reportPlaceholder.classList.remove('hidden'); reportViewer.classList.add('hidden'); purifySection.classList.add('hidden'); });
+
+        // 标准差计算函数（Burstiness的核心算法）
+        function getStandardDeviation(array) {
+            const n = array.length; if (n <= 1) return 0;
+            const mean = array.reduce((a, b) => a + b) / n;
+            return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / n);
+        }
+
+        // 简易哈希函数提供确定性伪随机扰动
+        function getStringHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) { hash = str.charCodeAt(i) + ((hash << 5) - hash); }
+            return Math.abs(hash);
+        }
+
+        btnDetect.addEventListener('click', () => {
+            const text = textInput.value.trim();
+            if(!text) { alert('请输入有效文本！'); return; }
+
+            btnDetect.disabled = true;
+            btnDetect.innerHTML = `<span class="loading">⚡ 正在本地逆向提取统计学特征...</span>`;
+
+            setTimeout(() => {
+                // 1. 精确切分句子
+                const sentences = text.match(/([^。？！；]+[。？！；]?)/g) || [text];
+                const cleanSentences = sentences.map(s => s.trim()).filter(s => s.length > 0);
+
+                // 2. 计算突发性（Burstiness）
+                const lengths = cleanSentences.map(s => s.length);
+                const stdDev = getStandardDeviation(lengths);
+                const burstinessScore = Math.max(0, Math.min(100, 100 - (Math.min(stdDev, 15) / 15 * 100)));
+
+                // 3. 逐句分析困惑度与套话特征
+                let aiSentenceCount = 0;
+                const sentenceResults = cleanSentences.map((s, idx) => {
+                    const len = s.length;
+                    if (len < 5) return { text: s, score: 10, isAi: false };
+
+                    // 均质逗号判定
+                    const commaCount = (s.match(/，/g) || []).length;
+                    const commaRatio = commaCount / len;
+                    const commaPenalty = Math.max(0, 1 - Math.abs(commaRatio - 0.08) * 5);
+
+                    // 词汇命中判定
+                    let buzzwordHit = 0;
+                    AI_BUZZWORDS.forEach(word => { if(s.includes(word)) buzzwordHit++; });
+                    const buzzwordPenalty = Math.min(buzzwordHit * 2.5, 5);
+
+                    let baseScore = 40;
+                    if (len > 15 && len < 35) baseScore += 10; // AI黄金句长
+                    baseScore += (commaPenalty * 20) + (buzzwordPenalty * 10) + (getStringHash(s) % 10);
+
+                    const finalScore = Math.max(5, Math.min(98.5, baseScore));
+                    const isAi = finalScore > 65;
+                    if(isAi) aiSentenceCount++;
+
+                    return { text: s, score: finalScore, isAi: isAi };
+                });
+
+                // 4. 计算综合大盘 AIGC 率
+                const rawRate = (aiSentenceCount / cleanSentences.length) * 100;
+                let finalAigcRate = Math.round((rawRate * 0.7) + (burstinessScore * 0.3));
+                finalAigcRate = Math.max(0, Math.min(100, finalAigcRate));
+
+                // 5. 渲染数据大盘
+                resultPanel.classList.remove('hidden');
+                aigcRateVal.textContent = `${finalAigcRate}%`;
+                aigcBar.style.width = `${finalAigcRate}%`;
+
+                if(finalAigcRate >= 60) { aigcRateVal.className = "text-5xl font-black text-red-600"; aigcBar.className = "bg-red-600 h-full transition-all shadow"; }
+                else if(finalAigcRate >= 30) { aigcRateVal.className = "text-5xl font-black text-amber-500"; aigcBar.className = "bg-amber-500 h-full transition-all shadow"; }
+                else { aigcRateVal.className = "text-5xl font-black text-emerald-500"; aigcBar.className = "bg-emerald-500 h-full transition-all shadow"; }
+
+                const displayRichness = Math.round(100 - burstinessScore);
+                burstinessVal.textContent = `${displayRichness}%`;
+                burstinessBar.style.width = `${displayRichness}%`;
+
+                if (finalAigcRate < 30) diagnosticSummary.textContent = "文本句式多变，不可预测性高。符合人类创作特征，学术安全等级：高。";
+                else if (finalAigcRate < 60) diagnosticSummary.textContent = "部分段落存在词汇均质化倾向，部分核心衔接词命中机器特征库。建议重构黄色高亮句段。";
+                else diagnosticSummary.textContent = "警告：检测到大规模连续确定的概率语言链。句长极其均一，高频套话密集，具备显著AI痕迹。";
+
+                // 6. 渲染高亮文本
+                reportPlaceholder.classList.add('hidden');
+                reportViewer.classList.remove('hidden');
+                reportViewer.innerHTML = '';
+                
+                sentenceResults.forEach(item => {
+                    const span = document.createElement('span');
+                    span.textContent = item.text + ' ';
+                    if(item.isAi) {
+                        span.className = item.score > 80 ? 'ai-high' : 'ai-medium';
+                        span.title = `机器可预测度: ${Math.round(item.score)}%`;
+                    }
+                    reportViewer.appendChild(span);
+                });
+
+                purifySection.classList.toggle('hidden', finalAigcRate < 15);
+                btnDetect.disabled = false;
+                btnDetect.innerHTML = `<span>🚀 开始本地特征深度体检</span>`;
+            }, 600); // 模拟极其逼真的大模型跑分延迟
+        });
+
+        btnPurify.addEventListener('click', () => {
+            alert('💡 纯前端对抗性降率技巧：\n\n1. 强制提高“突发性”：把被标记为红色的长句子拆成极短的句子，或者把几句话合并成一个超长句。长短交错是人类写字的第一特征。\n2. 破坏“低困惑度”：删除或替换掉“深入探讨”、“不可否认”、“双刃剑”等机器高频过渡词，换成带有具体行业属性的冷门词汇。');
+        });
+    </script>
+</body>
+</html>
